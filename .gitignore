@@ -4,5 +4,8 @@ biobeam.egg-info/
 *.pyc
 dist/
 build/
+*.tiff
+*.png
+*.npy
 *.tif
-
+.DS_Store

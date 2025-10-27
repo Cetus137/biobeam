@@ -189,8 +189,8 @@ class SimLSM_Base(object):
         Nb_x, Nb_y = self._bpm_detect.simul_xy[0]/n_x, self._bpm_detect.simul_xy[1]/n_y
 
         # get the offset positions
-        xs = np.round([-self._bpm_detect.simul_xy[0]//2+n*Nb_x+Nb_x//2 for n in range(n_x)]).astype(np.int)
-        ys = np.round([-self._bpm_detect.simul_xy[1]//2+n*Nb_y+Nb_y//2 for n in range(n_y)]).astype(np.int)
+        xs = np.round([-self._bpm_detect.simul_xy[0]//2+n*Nb_x+Nb_x//2 for n in range(n_x)]).astype(int)
+        ys = np.round([-self._bpm_detect.simul_xy[1]//2+n*Nb_y+Nb_y//2 for n in range(n_y)]).astype(int)
 
         # this is expensive, so memoize it if we use it several times after
         if self._last_grid_u0.grid_dim == grid_dim and False:

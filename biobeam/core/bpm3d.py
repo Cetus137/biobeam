@@ -418,6 +418,46 @@ class Bpm3d(object):
                                        n_integration_steps=n_integration_steps)
         cx, cy = center
         return np.roll(np.roll(u0, cy, 0), cx, 1)
+    
+    def u0_dithered_lattice(self, center=(0, 0), zfoc=None,
+                   NA1=.4, NA2=.5,
+                   sigma=.1,
+                   kpoints=6,
+                   dither_amplitude=0.5,
+                   n_dithers=5,
+                   n_integration_steps=300,
+                   ):
+        
+        """see help for biobeam.focus_field_lattice_plane"""
+
+        if zfoc is None:
+            zfoc = .5*self.size[-1]
+
+        u0 = focus_field_lattice_plane(shape=self.simul_xy,
+                                       units=(self.dx, self.dy),
+                                       z=zfoc, NA1=NA1, NA2=NA2,
+                                       sigma=sigma,
+                                       kpoints = kpoints,
+                                       lam=self.lam, n0=self.n0,
+                                       n_integration_steps=n_integration_steps)
+        
+        shifts = np.linspace(-dither_amplitude, dither_amplitude, n_dithers)
+        u0_accum = np.zeros_like(u0, dtype=np.complex64)
+        import matplotlib.pyplot as plt
+        from scipy.ndimage import shift 
+        for s in shifts:
+            print(s)
+            u0_shifted = shift(u0 , shift=(0,s), mode='wrap')
+            u0_accum += u0_shifted
+            #plt.imshow(np.abs(u0_shifted)**2, cmap = "hot")
+            #plt.show()
+
+
+        u0_dithered = u0_accum / len(shifts) #np.mean(u0, axis=2, keepdims=True)
+        cx, cy = center
+        return np.roll(np.roll(u0_dithered, cy, 0), cx, 1)
+        
+                            
 
     def _fill_buf_plane(self, u0):
         """fills buf plane from the array u0 with the correct sizes..."""

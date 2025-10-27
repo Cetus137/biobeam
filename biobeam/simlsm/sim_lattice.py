@@ -7,6 +7,7 @@ mweigert@mpi-cbg.de
 from __future__ import absolute_import
 from __future__ import print_function
 import numpy as np
+from biobeam import Bpm3d
 from biobeam.simlsm.simlsm import SimLSM_Base
 from six.moves import range
 
@@ -35,7 +36,7 @@ class SimLSM_Lattice(SimLSM_Base):
         self.dn = dn
         self.signal = signal
 
-        dn_trans = dn.transpose(self.perm_illum).copy() if dn else None
+        dn_trans = dn.transpose(self.perm_illum).copy() if dn is not None else None
 
         self._bpm_illum = Bpm3d(size=size,
                                 shape=shape,
@@ -68,6 +69,9 @@ class SimLSM_Lattice(SimLSM_Base):
         self.Nx, self.Ny, self.Nz = self._bpm_detect.shape
         self.size = self._bpm_detect.size
 
+        # Initialize grid save object for memoization
+        self._last_grid_u0 = self._GridSaveObject(None, None)
+
         self._prepare_u0_all()
 
     def _prepare_u0_illum(self, zfoc):
@@ -85,7 +89,8 @@ class SimLSM_Lattice(SimLSM_Base):
         u0 = np.roll(self.u0_illum, int(cz/self._bpm_illum.dx), axis=0)
 
         # prepare the parallel scheme
-        max_NA = self.NA_illum if np.isscalar(self.NA_illum) else max(self.NA_illum)
+        # For lattice, use outer NA as the maximum
+        max_NA = self.NA_illum2
 
         if dx_parallel is None:
             dx_parallel = 2*bpm.lam/max_NA
