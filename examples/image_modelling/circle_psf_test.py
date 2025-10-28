@@ -1,7 +1,9 @@
+
 import numpy as np
 from biobeam import SimLSM_Cylindrical, SimLSM_Lattice
 #from biobeam.data import tiling
 from gputools import perlin3
+from gputools import convolve_spatial3
 import tifffile as tiff
 import matplotlib.pyplot as plt
 
@@ -15,7 +17,7 @@ def create_dn_and_signal_sphere( N, path):
     Xs = np . meshgrid (x ,x ,x , indexing = "ij" )
     R = np . sqrt (np.sum ([ _X **2 for _X in Xs ] , axis = 0))
     # generate the r efr ac tiv e index d i f f e r e n c e s
-    dn = (0.02 +0.00 * perlin3(( N ,N , N ) , scale =3))  * ( R < 35)
+    dn = (0.00 +0.00 * perlin3(( N ,N , N ) , scale =3))  * ( R < 35)
 
     signal = np.einsum( "i , kj" , np.ones ( N ) , img)
     img_volume = np.zeros((img.shape[0], img.shape[1], img.shape[1]))
@@ -26,21 +28,16 @@ def create_dn_and_signal_sphere( N, path):
     tiff.imwrite("fluorescent_signal_volume.tiff", signal.astype(np.float32))
     return dn , signal
 
-def create_dn_and_signal(N , path , dn_amplitude , noise_amplitude, noise_scale=30):
+def create_dn_and_signal(N , path , dn_amplitude =0.2 , noise_amplitude =0.05, noise_scale=30):
     img = tiff.imread(path)
-    x = np . linspace ( -50 ,50 , N )
-    Xs = np . meshgrid (x ,x ,x , indexing = "ij" )
-
     dn = noise_amplitude * perlin3(( N ,N , N ) , scale = noise_scale) + dn_amplitude * np.ones((N,N,N ))
     tiff.imwrite("refractive_index_difference_volume.tiff", dn.astype(np.float32))
     img_volume = np.zeros((img.shape[0], img.shape[1], img.shape[1]))
     for i in range(img_volume.shape[0]):
-        img_volume[:, :, i] = img
+        img_volume[i, :, :] = img
     signal = img_volume
     tiff.imwrite("fluorescent_signal_volume.tiff", signal.astype(np.float32))
     return dn , signal
-
-
 
 
 if __name__ == "__main__":
@@ -49,11 +46,47 @@ if __name__ == "__main__":
     # sphere and an image as given by the
     # function tiling ( )
     N = 256
-    dn , signal = create_dn_and_signal(N = N, path = path, dn_amplitude = 0.0 , noise_amplitude=0.00, noise_scale=30)
+    dn , signal = create_dn_and_signal(N = N, path = path, noise_amplitude=0.5, dn_amplitude = 0.2, noise_scale=3)
     # create a m ic ros co pe simulator
-    m = SimLSM_Cylindrical(dn = dn , signal = signal , NA_detect =.45 , size = ( 2*N,2*N ,2*N) , n0 =1.33)
+    m = SimLSM_Cylindrical(dn = dn , signal = signal , NA_detect =.45 , size = ( 1000,1000,1000) , n0 =1.33)
     # generate image as recorded by the microscope
     # at an axial position -20 um relative to center
     idx = 0
-    psfs = m.psf_grid_z(cz = -20 , grid_dim =(32 ,32) , with_sheet = True , idx = idx)
+    # Get just the illumination (no sample)
+    illumination = m.propagate_illum(cz=0)
+    psf_grid_dim = (16,16)
+    psfs = m.psf_grid_z( cz = 0, grid_dim = psf_grid_dim ,with_sheet = False)
     print(psfs.shape)
+    signal = signal[0:32,...]
+    plt.imshow(psfs[16,...])
+    plt.show()
+
+    #img = m.simulate_image_z( cz = 499 , psf_grid_dim=(16 ,16) , conv_sub_blocks=(2 ,2), zslice=1)[0]
+    #plt.imshow(img, cmap='hot')
+    #plt.title('Simulated Image at cz=-499')
+    #plt.show()
+
+    print('shape of psf:'  , psfs.shape)
+    print('shape of signal:'  , signal.shape)
+    conv = convolve_spatial3(signal.copy(), psfs.copy(),verbose = True,
+                             grid_dim = (1,)+psf_grid_dim ,
+                             sub_blocks = (1,1,1))
+    
+    print(conv.shape)
+    tiff.imwrite("/Users/edwheeler/biobeam_test/biobeam/outputs/cylindrical_depth_degradation_convolved_image_cz_.tif", conv.astype(np.float32))
+
+    def conv2D(img_2d , psfs_2d):
+        '''
+        function to convolve a 2D image with a set of 2D psfs
+        '''
+        
+
+
+    '''
+    for cz in range(-N//2 + 1, N//2 - 1 , 1):
+        print(cz)
+        psfs = m.psf_grid_z( cz = cz , grid_dim =(64 ,64) ,with_sheet = True)
+        print(psfs.shape)
+        plt.imshow(psfs[16,...])
+        plt.show()
+    '''

@@ -344,7 +344,12 @@ class SimLSM_Base(object):
 
         print("spatially varying convolution: %s %s"%(signal.shape,psfs.shape))
         #convolve
-
+        print('shape of psf')
+        print(psfs.shape)
+        print('shape of signal')
+        print(signal.shape)
+        print('shape of psf_grid_dim')
+        print(psf_grid_dim)
         conv = convolve_spatial3(signal.copy(), psfs.copy(),
                                  grid_dim = (1,)+psf_grid_dim,
                                  sub_blocks=(1,)+conv_sub_blocks,
